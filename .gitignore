@@ -1,0 +1,11 @@
+# Ignorar o ambiente virtual
+backend/venv/
+
+# Ignorar dependências do Node.js no frontend
+frontend/node_modules/
+
+# Arquivos temporários e caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
