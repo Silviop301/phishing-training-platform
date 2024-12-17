@@ -1,8 +1,8 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from flask_cors import CORS
-from flask_mail import Mail  # Importa Flask-Mail
+from flask_migrate import Migrate # type: ignore
+from flask_cors import CORS # type: ignore
+from flask_mail import Mail  # type: ignore # Importa Flask-Mail
 
 # Objetos globais
 db = SQLAlchemy()
