@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from . import db
 from .models import Campaign
-from flask_mail import Message
+from flask_mail import Message # type: ignore
 from . import mail
 
 main_routes = Blueprint('main', __name__)
