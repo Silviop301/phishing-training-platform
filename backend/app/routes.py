@@ -1,8 +1,8 @@
-from flask import Blueprint, request, jsonify
-from . import db
-from .models import Campaign
+from flask import Blueprint, request, jsonify, redirect
+from . import db, mail
+from .models import Campaign, Click
 from flask_mail import Message # type: ignore
-from . import mail
+from datetime import datetime
 
 main_routes = Blueprint('main', __name__)
 
@@ -64,16 +64,49 @@ def send_campaign(campaign_id):
 
         # Enviar e-mail para cada destinatário
         for email in recipients:
+            tracking_link = f"http://127.0.0.1:5000/track/{campaign.id}/{email}"
+            body_with_link = f"{campaign.email_body}\n\nClique aqui: {tracking_link}"
+
             msg = Message(
                 subject=campaign.email_subject,
-                sender="silviop301@gmail.com",  # Substitua pelo e-mail configurado
+                sender="silviop301@gmail.com",
                 recipients=[email],
-                body=campaign.email_body
+                body=body_with_link
             )
             mail.send(msg)
+
 
         return jsonify({"message": "E-mails enviados com sucesso!", "recipients": recipients}), 200
 
     except Exception as e:
         print(f"Erro ao enviar e-mails: {str(e)}")
         return jsonify({"error": "Falha ao enviar e-mails.", "details": str(e)}), 500
+    
+# Rota para registrar cliques
+@main_routes.route('/track/<int:campaign_id>/<email>', methods=['GET'])
+def track_click(campaign_id, email):
+    campaign = Campaign.query.get(campaign_id)
+    if not campaign:
+        return jsonify({"error": "Campanha não encontrada"}), 404
+
+    # Salvar clique no banco
+    click = Click(campaign_id=campaign_id, email=email)
+    db.session.add(click)
+    db.session.commit()
+
+    print(f"Clique registrado na campanha {campaign_id} para o e-mail: {email}")
+
+    return redirect("https://example.com")  # Link de destino real
+
+@main_routes.route('/clicks', methods=['GET'])
+def get_clicks():
+    clicks = Click.query.all()
+    result = []
+    for click in clicks:
+        result.append({
+            "id": click.id,
+            "campaign_id": click.campaign_id,
+            "email": click.email,
+            "clicked_at": click.clicked_at.strftime("%Y-%m-%d %H:%M:%S")
+        })
+    return jsonify(result)

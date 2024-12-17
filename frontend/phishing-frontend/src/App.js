@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import './App.css';
 
 function App() {
-  // Estados para campanhas e dados do formulário
   const [campaigns, setCampaigns] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
@@ -10,12 +9,17 @@ function App() {
     email_body: '',
     target_emails: ''
   });
+  const [clicks, setClicks] = useState([]);
 
-  // Carregar campanhas do backend na inicialização
+  // Carregar campanhas na inicialização
   useEffect(() => {
     fetchCampaigns();
+    fetchClicks();
+    const interval = setInterval(fetchClicks, 5000); // Atualiza os cliques a cada 5s
+    return () => clearInterval(interval);
   }, []);
 
+  // Buscar campanhas do backend
   const fetchCampaigns = () => {
     fetch('http://127.0.0.1:5000/campaigns')
       .then((response) => response.json())
@@ -23,12 +27,20 @@ function App() {
       .catch((error) => console.error('Erro ao buscar campanhas:', error));
   };
 
-  // Atualizar estado do formulário conforme o usuário digita
+  // Buscar cliques do backend
+  const fetchClicks = () => {
+    fetch('http://127.0.0.1:5000/clicks')
+      .then((response) => response.json())
+      .then((data) => setClicks(data))
+      .catch((error) => console.error('Erro ao buscar cliques:', error));
+  };
+
+  // Atualizar estado do formulário
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Submeter o formulário para criar nova campanha
+  // Criar nova campanha
   const handleSubmit = (e) => {
     e.preventDefault();
     fetch('http://127.0.0.1:5000/campaigns', {
@@ -36,73 +48,51 @@ function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...formData,
-        target_emails: formData.target_emails.split(',') // Separar e-mails por vírgulas
+        target_emails: formData.target_emails.split(',')
       })
     })
       .then((response) => response.json())
-      .then((data) => {
-        console.log('Campanha criada:', data);
-        fetchCampaigns(); // Atualiza a lista de campanhas
-        setFormData({ name: '', email_subject: '', email_body: '', target_emails: '' }); // Limpa o formulário
+      .then(() => {
+        fetchCampaigns();
+        setFormData({ name: '', email_subject: '', email_body: '', target_emails: '' });
       })
       .catch((error) => console.error('Erro ao criar campanha:', error));
   };
 
-  // Enviar e-mails simulados para uma campanha específica
+  // Enviar e-mails simulados
   const handleSendEmails = (campaignId) => {
-    fetch(`http://127.0.0.1:5000/campaigns/${campaignId}/send`, {
-      method: 'POST'
-    })
+    fetch(`http://127.0.0.1:5000/campaigns/${campaignId}/send`, { method: 'POST' })
       .then((response) => response.json())
-      .then((data) => {
-        alert(`E-mails enviados com sucesso para: ${data.recipients.join(', ')}`);
-      })
-      .catch((error) => {
-        console.error('Erro ao enviar e-mails:', error);
-        alert('Falha ao enviar os e-mails.');
-      });
+      .then(() => alert('E-mails enviados com sucesso!'))
+      .catch(() => alert('Falha ao enviar os e-mails.'));
   };
-  
 
   return (
     <div className="App">
       <header className="App-header">
         <h1>Plataforma de Treinamento em Phishing</h1>
-        <h2>Campanhas Ativas</h2>
 
         {/* Lista de Campanhas */}
+        <h2>Campanhas Ativas</h2>
         <ul>
-        {campaigns.length > 0 ? (
-          campaigns.map((campaign) => (
-            <li key={campaign.id}>
-              <strong>{campaign.name}</strong> <br />
-              Assunto: {campaign.email_subject} <br />
-              E-mails Alvo: {campaign.target_emails.join(', ')} <br />
-              Criada em: {new Date(campaign.created_at).toLocaleString()} <br />
-              {/* Botão para disparar e-mails */}
-              <button onClick={() => handleSendEmails(campaign.id)}>
-                Enviar E-mails
-              </button>
-            </li>
-          ))
-        ) : (
-          <p>Nenhuma campanha encontrada.</p>
-        )}
-      </ul>
+          {campaigns.length > 0 ? (
+            campaigns.map((campaign) => (
+              <li key={campaign.id}>
+                <strong>{campaign.name}</strong> <br />
+                Assunto: {campaign.email_subject} <br />
+                E-mails Alvo: {campaign.target_emails.join(', ')} <br />
+                Criada em: {new Date(campaign.created_at).toLocaleString()} <br />
+                <button onClick={() => handleSendEmails(campaign.id)}>Enviar E-mails</button>
+              </li>
+            ))
+          ) : (
+            <p>Nenhuma campanha encontrada.</p>
+          )}
+        </ul>
 
-
+        {/* Formulário de Nova Campanha */}
         <h2>Criar Nova Campanha</h2>
-        {/* Formulário para Criar Nova Campanha */}
-        <form
-          onSubmit={handleSubmit}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-            maxWidth: '400px',
-            margin: '0 auto'
-          }}
-        >
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <input
             type="text"
             name="name"
@@ -134,10 +124,39 @@ function App() {
             onChange={handleChange}
             required
           />
-          <button type="submit" style={{ backgroundColor: '#4caf50', color: 'white' }}>
-            Criar Campanha
-          </button>
+          <button type="submit">Criar Campanha</button>
         </form>
+
+        {/* Logs de Cliques */}
+        <h2>Log de Cliques</h2>
+        <table border="1" cellPadding="10" style={{ borderCollapse: 'collapse', marginTop: '20px' }}>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Campanha ID</th>
+              <th>Email</th>
+              <th>Data/Hora do Clique</th>
+            </tr>
+          </thead>
+          <tbody>
+            {clicks.length > 0 ? (
+              clicks.map((click) => (
+                <tr key={click.id}>
+                  <td>{click.id}</td>
+                  <td>{click.campaign_id}</td>
+                  <td>{click.email}</td>
+                  <td>{click.clicked_at}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="4" style={{ textAlign: 'center' }}>
+                  Nenhum clique registrado ainda.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </header>
     </div>
   );
